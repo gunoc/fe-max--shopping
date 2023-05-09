@@ -1,113 +1,69 @@
-import { PATH, URL } from '../../constants/path.js';
+import { PATH } from '../../constants/path.js';
 import { handleDimming, layerOpenState } from '../../utils/dim.js';
-import { TemplateGenerator } from '../search/TemplateGenerator.js';
+import { $, renderChildren } from '../../utils/dom.js';
+import { JSONClient } from '../api/api.js';
+import { SidebarTemplateGenerator } from './SidebarTemplateGenerator.js';
 
-const sideArea = document.querySelector('.side');
-const sideBox = document.querySelector('.side__box');
-const closeBtn = document.querySelector('.side__close-btn');
-const sideViewAll = document.querySelector('.side__view-all');
-const sideListDigital = document.querySelector('.side__list-digital');
-const sideListShoopping = document.querySelector('.side__list-shopping');
-const sideListMain = document.querySelector('.side__list-main');
-const sideListSub = document.querySelector('.side__list-sub');
-
-export class JSONFetcher {
-  constructor(url) {
-    this.url = url;
-  }
-  getData() {
-    return fetch(`${this.url}/${PATH.side}`).then(response => {
-      if (!response.ok) throw new Error(response.statusText);
-      return response.json();
-    });
-  }
-}
-export class DataConverter {
-  constructor(url) {
-    this.jsonFetcher = new JSONFetcher(url);
-  }
-  getObject(type) {
-    return this.jsonFetcher.getData().then(result => {
-      return result[type];
-    });
-  }
-  //todo: JSONFetcher와 통합하기
-  getData() {
-    return this.jsonFetcher.getData().then(result => {
-      return result;
-    });
-  }
-}
 export class SideBar {
   constructor() {
-    this.templateGenerator = new TemplateGenerator();
-    this.sideBarMenuHandler = new SideBarMenuHandler();
-    this.dataConverter = new DataConverter(URL.jsonBase);
-  }
-  initSideBar() {
-    this.sideBarMenuHandler.toggleSidebar();
-
-    this.dataConverter.getObject(PATH.digital).then(result => {
-      const template = this.templateGenerator.generateDigitalMenu(result);
-      menuRenderer(sideListDigital,template)
-      this.sideBarMenuHandler.openSubMenu('.side__list-digital', result);
-      this.sideBarMenuHandler.closeSubMenu();
-    });
-
-    this.dataConverter.getObject(PATH.shopping).then(result => {
-      const template = this.templateGenerator.generateShoppingMenu(result);
-      menuRenderer(sideListShoopping,template)
-      this.sideBarMenuHandler.openSubMenu('.side__list-shopping', result);
-      this.sideBarMenuHandler.closeSubMenu();
-    });
-
-    this.dataConverter.getObject(PATH.collapsible).then(result => {
-      const template = this.templateGenerator.generateCollapsibleMenu(result);
-      menuRenderer(sideListMain,template)
-
-      this.sideBarMenuHandler.toggleMenu();
-      this.sideBarMenuHandler.openSubMenu('.side__list-main', result);
-      this.sideBarMenuHandler.closeSubMenu();
-    });
+    this.templateGenerator = SidebarTemplateGenerator;
+    this.fetcher = new JSONClient(PATH.side);
+    this.sideArea = $('.side');
+    this.closeBtn = $('.side__close-btn');
+    this.sideBox = $('.side__box', this.sideArea);
+    this.sideViewAll = $('.side__view-all', this.sideArea);
+    this.sideListDigital = $('.side__list-digital', this.sideArea);
+    this.sideListShopping = $('.side__list-shopping', this.sideArea);
+    this.sideListMain = $('.side__list-main', this.sideArea);
+    this.sideListSub = $('.side__list-sub', this.sideArea);
   }
 
-  getObject(type) {
-    return this.jsonFetcher.getData().then(result => {
-      return result[type];
-    });
+  async initSideBar() {
+    this.toggleSidebar();
+    this.renderDigitalCategory();
+    this.renderShoppingCategory();
+    this.closeSubMenu();
+    await this.renderCollapsibleMenu(); // 아래 toggleMenu 내부에서 사용하는 [간단히보기] 노드가 여기서 생성
+    this.toggleMenu();
   }
-}
 
-export class SideBarMenuHandler {
-  constructor() {
-    this.templateGenerator = new TemplateGenerator();
+  async renderCollapsibleMenu() {
+    const collapsibleCategoryInfo = await this.fetcher.getCategoryData(
+      PATH.collapsible
+    );
+    const collapMenuTemplate = this.templateGenerator.generateCollapsibleMenu(
+      collapsibleCategoryInfo
+    );
+    renderChildren(this.sideListMain, collapMenuTemplate);
+
+    this.openSubMenu(this.sideListMain, collapsibleCategoryInfo);
   }
-  toggleSidebar() {
-    document.addEventListener('click', e => {
-      if (e.target.closest('.hamburger-btn')) {
-        layerOpenState.sidebar = true;
-        sideArea.classList.add('active');
-        closeBtn.classList.remove('close');
-        handleDimming();
-      } else if (!e.target.closest('.side')) {
-        layerOpenState.sidebar = false;
-        sideArea.classList.remove('active');
-        closeBtn.classList.add('close');
-        handleDimming();
-      }
-    });
+
+  async renderShoppingCategory() {
+    const shoppingCategoryInfo = await this.fetcher.getCategoryData(
+      PATH.shopping
+    );
+    const shoppingMenuTemplate =
+      this.templateGenerator.generateMainMenu(shoppingCategoryInfo);
+    renderChildren(this.sideListShopping, shoppingMenuTemplate);
+
+    this.openSubMenu(this.sideListShopping, shoppingCategoryInfo);
   }
-  toggleMenu() {
-    sideViewAll.addEventListener('click', () => {
-      sideListMain.classList.remove('compressed');
-    });
-    const sideViewSimple = document.querySelector('.side__view-simple');
-    sideViewSimple.addEventListener('click', () => {
-      sideListMain.classList.add('compressed');
-    });
+
+  async renderDigitalCategory() {
+    const digitalCategoryInfo = await this.fetcher.getCategoryData(
+      PATH.digital
+    );
+    const digitalMenuTemplate =
+      this.templateGenerator.generateMainMenu(digitalCategoryInfo);
+    renderChildren(this.sideListDigital, digitalMenuTemplate);
+
+    this.openSubMenu(this.sideListDigital, digitalCategoryInfo);
   }
+
+  // TODO: 아래부터 이벤트 핸들러 등록 로직 전반 개선하기, 이벤트 핸들러 분리하기, 위의 렌더링 함수에서 openSubMenu 함수 제거하기
   openSubMenu(node, menuObj) {
-    document.querySelector(node).addEventListener('click', e => {
+    node.addEventListener('click', e => {
       if (e.target.dataset.id) {
         return;
       } else {
@@ -116,23 +72,43 @@ export class SideBarMenuHandler {
           menuObj,
           keyText
         );
-        menuRenderer(sideListSub,subTemplate)
-        sideBox.classList.add('translateX');
+        renderChildren(this.sideListSub, subTemplate);
+        this.sideBox.classList.add('translateX');
       }
     });
   }
-  closeSubMenu() {
-    sideListSub.addEventListener('click', e => {
-      if (!e.target.dataset.id) {
-        return;
-      } else {
-        console.log(e.target.dataset.id);
-        sideBox.classList.remove('translateX');
-      }
-    });
-  }
-}
 
-function menuRenderer(parentNode, template) {
-  parentNode.innerHTML = template;
+  toggleSidebar() {
+    document.addEventListener('click', e => {
+      if (e.target.closest('.hamburger-btn')) {
+        layerOpenState.sidebar = true;
+        this.sideArea.classList.add('active');
+        this.closeBtn.classList.remove('close');
+        handleDimming();
+      } else if (!e.target.closest('.side')) {
+        layerOpenState.sidebar = false;
+        this.sideArea.classList.remove('active');
+        this.closeBtn.classList.add('close');
+        handleDimming();
+      }
+    });
+  }
+
+  toggleMenu() {
+    this.sideViewAll.addEventListener('click', () => {
+      this.sideListMain.classList.remove('compressed');
+    });
+    const sideViewSimple = $('.side__view-simple', this.sideArea);
+    sideViewSimple.addEventListener('click', () => {
+      this.sideListMain.classList.add('compressed');
+    });
+  }
+
+  closeSubMenu() {
+    this.sideListSub.addEventListener('click', e => {
+      if (e.target.dataset.id === 'close-sub') {
+        this.sideBox.classList.remove('translateX');
+      }
+    });
+  }
 }
