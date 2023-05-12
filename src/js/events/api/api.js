@@ -31,16 +31,24 @@ export class JSONClient extends DataFetcher {
   constructor(path) {
     super(`${URL.jsonBase}/${path}`);
   }
+
   async getSlideData() {
     const data = await this.getData();
     return data.map(el => el.image);
   }
+
   async getJsonTermsData(prop, keyword) {
     const data = await this.fetchJsonData(`?${prop}_like=${keyword}`);
     return data;
   }
+
   async getMenuData() {
     const data = await this.getData();
     return data.map(el => el.text);
+  }
+
+  async getCategoryData(categoryName) {
+    const data = await this.getData();
+    return data[categoryName];
   }
 }

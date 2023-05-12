@@ -1,9 +1,9 @@
-import { $ } from '../../utils/dom.js';
-import { APIClient, JSONClient } from '../api/api.js';
-import { getRandomLetter } from '../../utils/pickPrefix.js';
 import { PATH } from '../../constants/path.js';
-import { TemplateGenerator } from './TemplateGenerator.js';
+import { $ } from '../../utils/dom.js';
+import { getRandomLetter } from '../../utils/pickPrefix.js';
+import { APIClient, JSONClient } from '../api/api.js';
 import { SearchPanelHandler } from './SearchPanelHandler.js';
+import { SearchTemplateGenerator } from './SearchTemplateGenerator.js';
 
 const searchBarInput = document.searchForm.searchBar;
 const searchPanel = $('.search-panel');
@@ -23,7 +23,7 @@ export class SearchTermFetcher {
 export class SearchBar {
   constructor() {
     this.termsType = { suggest: [], history: [], auto: [] };
-    this.templateGenerator = new TemplateGenerator();
+    this.templateGenerator = SearchTemplateGenerator;
     this.searchPanelHandler = new SearchPanelHandler();
     this.searchTermFetcher = new SearchTermFetcher();
   }

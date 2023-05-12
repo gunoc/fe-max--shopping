@@ -2,7 +2,7 @@ import { PATH } from '../constants/path.js';
 import { $, $All } from '../utils/dom.js';
 import { shuffleArray } from '../utils/shuffleArray.js';
 import { JSONClient } from './api/api.js';
-import { TemplateGenerator } from '../events/search/TemplateGenerator.js';
+
 const slideContainer = $('.hero');
 const slideButtonLayout = $('.slide-buttons-layout');
 const slide = $('.slide-banner');
@@ -29,8 +29,7 @@ async function selectSlides() {
 }
 
 async function getSlideTemplate() {
-  const templateGenerator = new TemplateGenerator();
-  const template = templateGenerator.generateSlides(await selectSlides());
+  const template = generateSlides(await selectSlides());
   return template;
 }
 async function slideRenderer() {
@@ -116,4 +115,13 @@ function handleSlideTransitionEnd({ firstClone, lastClone }) {
       setSlidePosition(slides);
     }
   });
+}
+
+function generateSlides(slides) {
+  const slidesTemplate = slides.reduce((acc, cur, i) => {
+    return (acc += `<li class="slide-item">
+      <img src="${cur}" alt="${i}">
+  </li>`);
+  }, '');
+  return slidesTemplate;
 }
